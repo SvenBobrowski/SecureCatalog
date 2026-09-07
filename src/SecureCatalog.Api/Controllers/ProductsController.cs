@@ -2,6 +2,8 @@ using Microsoft.AspNetCore.Mvc;
 using SecureCatalog.Api.Contracts;
 using SecureCatalog.Api.Models;
 using SecureCatalog.Api.Repositories;
+using Microsoft.AspNetCore.Authorization;
+using SecureCatalog.Api.Security;
 
 namespace SecureCatalog.Api.Controllers;
 
@@ -11,6 +13,7 @@ public sealed class ProductsController(
     IProductRepository repository)
     : ControllerBase
 {
+    [Authorize(Policy = Permissions.Products.Read)]
     [HttpGet]
     public async Task<ActionResult<IReadOnlyList<Product>>> GetAll(
         CancellationToken cancellationToken)

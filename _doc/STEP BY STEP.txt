@@ -248,3 +248,98 @@ Content-Type: application/json
 GET {{host}}/api/products
 Accept: application/json
 
+11. Authentication → Authorization → Permissions/Policies
+
+Bedeutet JWT + Claims + Policy-basiertes Authorization-Konzept
+JWT für Authentication
+Claims für Authorization
+Permissions/Policies für API und Zugriffskontrolle
+
+- Wir legen eine statische Klasse an, wo wir für die verschiedenen Controller sogenannte Permissions definieren, die dem Anwender erstmal eine Berechtigung erteilen.
+Später erstellen wir dann daraus Policies für die einzelnen Methoden, also Permission >> Policy!
+
+- Wir machen unsere Permissions als Policy der Anwendung bekannt in der program.cs. 
+Theoretisch könnte man auch User Rollen ("Admin", "User", etc.) verwenden, nur endet man dann schnell in einer "Hölle" wenn es um explizite Rechte geht.
+Also lieber gleich detailliert über Permissions und Policies.
+
+builder.Services.AddAuthorization(options =>
+{
+    options.AddPolicy(
+        Permissions.Products.Read,
+        policy => policy.RequireClaim(
+            Permissions.ClaimType,
+            Permissions.Products.Read));
+
+    options.AddPolicy(
+        Permissions.Products.Write,
+        policy => policy.RequireClaim(
+            Permissions.ClaimType,
+            Permissions.Products.Write));
+
+    options.AddPolicy(
+        Permissions.Products.Delete,
+        policy => policy.RequireClaim(
+            Permissions.ClaimType,
+            Permissions.Products.Delete));
+});
+
+Authentifizierung implementieren
+
+Pakete:
+
+* Microsoft.AspNetCore.Authentication.JwtBearer
+
+dann in program.cs JWT als Auth eintragen
+
+builder.Services
+    .AddAuthentication(JwtBearerDefaults.AuthenticationScheme)
+    .AddJwtBearer(options =>
+    {
+        options.TokenValidationParameters = new TokenValidationParameters
+        {
+            ValidateAudience = true,
+            ValidateIssuer = true,
+            ValidateLifetime = true,
+            ValidateIssuerSigningKey = true,
+
+            ValidIssuer = builder.Configuration["Jwt.Issuer"],
+            ValidAudience = builder.Configuration["Jwt.Audience"],
+
+            IssuerSigningKey = new SymmetricSecurityKey(Encoding.UTF8.GetBytes(jwtKey))
+        };
+    });
+
+
+Wichtig sind dann auch
+
+app.UseAuthentication();
+app.UseAuthorization();
+
+und in der Reihenfolge.
+
+Wir brauchen auch einen Auth Controller, der die Tokens ausstellt. Rein geht in der Regel User/Pwd, raus kommen sollte ein signiertes Token.
+
+in .http zum Testen auch sehr interessant:
+
+### Editor Login
+# @name editorLogin
+POST {{SecureCatalog.Api_HostAddress}}/api/auth/token
+Content-Type: application/json
+
+{
+  "username": "editor",
+  "password": "editor123"
+}
+
+und dann
+
+POST {{SecureCatalog.Api_HostAddress}}/api/products
+Authorization: Bearer {{editorLogin.response.body.accessToken}}
+Content-Type: application/json
+etc.
+
+Jetzt integrieren wir das mal im Controller.
+
+using Microsoft.AspNetCore.Authorization;
+using SecureCatalog.Api.Security;
+
