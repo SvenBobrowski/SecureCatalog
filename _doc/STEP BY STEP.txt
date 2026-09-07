@@ -1,0 +1,250 @@
+EXTENSIONS
+
+Ctrl + Shift + X
+Suche nach REST Client.
+Installiere die Erweiterung von Huachao Mao: REST Client im VS Code Marketplace
+Öffne danach SecureCatalog.Api.http erneut.
+
+STEP BY STEP
+
+1. Verzeichnis suchen oder anlegen
+
+2. Solution
+dotnet new sln -n SecureCatalog --format slnx
+
+** slnx moderner und schlanker
+
+3. Einzelne Source Projekte, Libraries und Tests anlegen
+
+dotnet new ist die Magie
+-n => Name
+-o => Verzeichnis
+
+dotnet new webapi `
+  -n SecureCatalog.Api `
+  -o src/SecureCatalog.Api `
+  --use-controllers
+
+dotnet new xunit `
+  -n SecureCatalog.Api.Tests `
+  -o tests/SecureCatalog.Api.Tests
+
+4. Abhängigkeiten setzen
+
+dotnet add tests/SecureCatalog.Api.Tests/SecureCatalog.Api.Tests.csproj reference src/SecureCatalog.Api/SecureCatalog.Api.csproj
+
+5. Mit normalen build/test command checken
+
+- dotnet run --Project 
+- dotnet build
+- dotnet test
+
+6. Template aufräumen
+
+7. EF hinzufügen
+
+dotnet add src/SecureCatalog.Api package Microsoft.EntityFrameworkCore.Sqlite
+dotnet add src/SecureCatalog.Api package Microsoft.EntityFrameworkCore.Design
+
+Data Ordner + DB Context anlegen
+
+using Microsoft.EntityFrameworkCore;
+using SecureCatalog.Api.Models;
+
+namespace SecureCatalog.Api.Data;
+
+public sealed class CatalogDbContext(
+    DbContextOptions<CatalogDbContext> options)
+    : DbContext(options)
+{
+    public DbSet<Product> Products => Set<Product>();
+}
+
+Dann in appsettings:
+
+  "ConnectionStrings": {
+    "CatalogDatabase": "Data Source=securecatalog.db"
+  },
+
+Dann in program.cs
+
+using SecureCatalog.Api.Data;
+using Microsoft.EntityFrameworkCore;
+
+und final
+
+// db connection
+var connectionString = builder.Configuration.GetConnectionString("CatalogDatabase") ?? throw new InvalidOperationException("Connection string 'CatalogDatabase' not found.");
+
+builder.Services.AddDbContext<CatalogDbContext>(options =>
+    options.UseSqlite(connectionString));
+
+8. Migrations Tool, wegen Pipeline extra Tool
+
+dotnet new tool-manifest
+dotnet tool install dotnet-ef
+
+dotnet tool run dotnet-ef migrations add InitialCreate \
+  --project src/SecureCatalog.Api/SecureCatalog.Api.csproj \
+  --startup-project src/SecureCatalog.Api/SecureCatalog.Api.csproj \
+  --output-dir Data/Migrations
+
+anschließend via update die DB erzeugen/aktualisieren
+
+dotnet tool run dotnet-ef database update `
+  --project src/SecureCatalog.Api/SecureCatalog.Api.csproj `
+  --startup-project src/SecureCatalog.Api/SecureCatalog.Api.csproj
+
+9. Wir machen ein Repository, also ein Verzeichnis, der Produkte als internen CRUD Container.
+
+using SecureCatalog.Api.Models;
+
+namespace SecureCatalog.Api.Repositories;
+
+public interface IProductRepository
+{
+    Task<IReadOnlyList<Product>> GetAllAsync(
+        CancellationToken cancellationToken = default);
+
+    Task<Product?> GetByIdAsync(
+        int id,
+        CancellationToken cancellationToken = default);
+
+    Task<Product> CreateAsync(
+        Product product,
+        CancellationToken cancellationToken = default);
+
+    Task<bool> UpdateAsync(
+        Product product,
+        CancellationToken cancellationToken = default);
+
+    Task<bool> DeleteAsync(
+        int id,
+        CancellationToken cancellationToken = default);
+}
+
+Der Controller selbst wird später über das Interface auf unsere Repository Instanz zugreifen.
+
+10. Der Controller, ziemlich einfach.
+Mit Primary Constructor und Dependence Injection bekommen wir direkt eine Instanz des Repository mit DB Zugriff.
+Wir verzichten beim POST und PUT auch auf die das interne Modell mit EF Anbindung und verwenden lieber DTO Records, um nur Payloads zu haben, die wirklich änderbar sind. Beide Methoden liefern als Ergebnis aber immer das komplette aktualisierte Objekt.
+
+using Microsoft.AspNetCore.Mvc;
+using SecureCatalog.Api.Contracts;
+using SecureCatalog.Api.Models;
+using SecureCatalog.Api.Repositories;
+
+namespace SecureCatalog.Api.Controllers;
+
+[ApiController]
+[Route("api/[controller]")]
+public sealed class ProductsController(
+    IProductRepository repository)
+    : ControllerBase
+{
+    [HttpGet]
+    public async Task<ActionResult<IReadOnlyList<Product>>> GetAll(
+        CancellationToken cancellationToken)
+    {
+        var products =
+            await repository.GetAllAsync(cancellationToken);
+
+        return Ok(products);
+    }
+
+    [HttpGet("{id:int}")]
+    public async Task<ActionResult<Product>> GetById(
+        int id,
+        CancellationToken cancellationToken)
+    {
+        var product =
+            await repository.GetByIdAsync(id, cancellationToken);
+
+        if (product is null)
+        {
+            return NotFound();
+        }
+
+        return Ok(product);
+    }
+
+    [HttpPost]
+    public async Task<ActionResult<Product>> Create(
+        [FromBody] ProductRequestDTO request,
+        CancellationToken cancellationToken)
+    {
+        var product = new Product
+        {
+            Name = request.Name,
+            Description = request.Description,
+            Price = request.Price
+        };
+            
+        await repository.CreateAsync(product, cancellationToken);
+
+        return CreatedAtAction(
+            nameof(GetById),
+            new { id = product.Id },
+            product);
+    }
+
+    [HttpPut("{id:int}")]
+    public async Task<ActionResult<Product>> Update(
+        int id,
+        [FromBody] ProductRequestDTO request,
+        CancellationToken cancellationToken)
+    {
+        var existingProduct =
+            await repository.GetByIdAsync(id, cancellationToken);
+
+        if (existingProduct is null)
+        {
+            return NotFound();
+        }
+
+        existingProduct.Name = request.Name;
+        existingProduct.Description = request.Description;
+        existingProduct.Price = request.Price;
+
+        await repository.UpdateAsync(existingProduct, cancellationToken);
+
+        return Ok(existingProduct);
+    }
+
+    [HttpDelete("{id:int}")]
+    public async Task<ActionResult> Delete(
+        int id,
+        CancellationToken cancellationToken)
+    {
+        var existingProduct =
+            await repository.GetByIdAsync(id, cancellationToken);
+
+        if (existingProduct is null)
+        {
+            return NotFound();
+        }
+
+        await repository.DeleteAsync(existingProduct.Id, cancellationToken);
+
+        return NoContent();
+    }
+}
+
+Damit haben wir alle CRUD Operationen via REST-API integriert.
+
+Wenn man will kann man sich eine SecureCatalog.Api.http (o.ä.) anlegen und alle Methoden dort zum Testen integrieren:
+
+POST {{host}}/api/products
+Content-Type: application/json
+
+{
+  "name": "Schreibtisch",
+  "description": "Höhenverstellbar",
+  "price": 499.99
+}
+
+###
+
+GET {{host}}/api/products
+Accept: application/json
+

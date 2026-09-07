@@ -1,0 +1,51 @@
+@host = http://localhost:5258
+
+POST {{host}}/api/products
+Content-Type: application/json
+
+{
+  "name": "Schreibtisch",
+  "description": "Höhenverstellbar",
+  "price": 499.99
+}
+
+###
+
+POST {{host}}/api/products
+Content-Type: application/json
+
+{
+  "name": "Schreibtisch",
+  "description": "Fixiert",
+  "price": 499.99
+}
+
+###
+
+GET {{host}}/api/products
+Accept: application/json
+
+###
+
+GET {{host}}/api/products/42
+Accept: application/json
+
+###
+
+GET {{host}}/api/products/1
+Accept: application/json
+
+###
+
+PUT {{host}}/api/products/1
+Content-Type: application/json  
+
+{
+  "name": "Schreibtisch",
+  "description": "Höhenverstellbar",
+  "price": 499.99
+}
+
+###
+
+DELETE {{host}}/api/products/2

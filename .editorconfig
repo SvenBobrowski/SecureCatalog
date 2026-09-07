@@ -1,0 +1,5 @@
+﻿root = true
+
+[*.{cs,csproj,sln,slnx}]
+indent_style = space
+indent_size = 4
