@@ -39,9 +39,12 @@ docker run --rm -p 8080:8080 securecatalog-api
 # Testing in Ubuntu
 curl -v http://localhost:8080/api/products
 
-# Testing is possible with http file
-Switch address to http://localhost:8080
-and use the VS Code extension
+# Avoid problems with proxies in WSL
+hostname -I
+=> 172.18.241.250
+Set address to http://172.18.241.250:8080 in HTTP for testing
+
+# Finally test API with Docker Container
 
 ### CI/CD
 
