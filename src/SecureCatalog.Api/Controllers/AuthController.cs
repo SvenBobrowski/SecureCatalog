@@ -37,6 +37,18 @@ public sealed class AuthController(
                     Permissions.Products.Delete
                 }));
         }
+        if (login.Username == "owner" && login.Password == "owner123")
+        {
+            return Ok(CreateJwt(
+                login.Username,
+                new[]
+                {
+                    Permissions.Products.Read,
+                    Permissions.Products.Write,
+                    Permissions.Products.Delete,
+                    Permissions.Products.Reset
+                }));
+        }
 
         return Unauthorized();
     }
@@ -50,8 +62,6 @@ public sealed class AuthController(
 
         var issuer = configuration["Jwt:Issuer"];
         var audience = configuration["Jwt:Audience"];
-
-        Console.WriteLine($"{issuer}:{audience}");
 
         var claims = new List<Claim>
         {

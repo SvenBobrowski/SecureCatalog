@@ -43,6 +43,12 @@ builder.Services.AddAuthorization(options =>
         policy => policy.RequireClaim(
             Permissions.ClaimType, 
             Permissions.Products.Delete));
+
+    options.AddPolicy(
+        Permissions.Products.Reset,
+        policy => policy.RequireClaim(
+            Permissions.ClaimType, 
+            Permissions.Products.Reset));
 });
 
 // Authentification
@@ -56,6 +62,13 @@ builder.Services
     .AddAuthentication(JwtBearerDefaults.AuthenticationScheme)
     .AddJwtBearer(options =>
     {
+        var issuer = builder.Configuration["Jwt:Issuer"];
+        var audience = builder.Configuration["Jwt:Audience"];
+
+        // XXX DEBUG
+        Console.WriteLine($"VALID ISSUER: '{issuer}'");
+        Console.WriteLine($"VALID AUDIENCE: '{audience}'");
+
         options.TokenValidationParameters = new TokenValidationParameters
         {
             ValidateAudience = true,
@@ -63,8 +76,8 @@ builder.Services
             ValidateLifetime = true,
             ValidateIssuerSigningKey = true,
 
-            ValidIssuer = builder.Configuration["Jwt.Issuer"],
-            ValidAudience = builder.Configuration["Jwt.Audience"],
+            ValidIssuer = issuer,
+            ValidAudience = audience,
 
             IssuerSigningKey = new SymmetricSecurityKey(Encoding.UTF8.GetBytes(jwtKey))
         };

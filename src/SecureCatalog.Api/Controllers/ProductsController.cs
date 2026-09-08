@@ -24,6 +24,7 @@ public sealed class ProductsController(
         return Ok(products);
     }
 
+    [Authorize(Policy = Permissions.Products.Read)]
     [HttpGet("{id:int}")]
     public async Task<ActionResult<Product>> GetById(
         int id,
@@ -40,6 +41,7 @@ public sealed class ProductsController(
         return Ok(product);
     }
 
+    [Authorize(Policy = Permissions.Products.Write)]
     [HttpPost]
     public async Task<ActionResult<Product>> Create(
         [FromBody] ProductRequestDTO request,
@@ -60,6 +62,7 @@ public sealed class ProductsController(
             product);
     }
 
+    [Authorize(Policy = Permissions.Products.Write)]
     [HttpPut("{id:int}")]
     public async Task<ActionResult<Product>> Update(
         int id,
@@ -83,6 +86,7 @@ public sealed class ProductsController(
         return Ok(existingProduct);
     }
 
+    [Authorize(Policy = Permissions.Products.Delete)]
     [HttpDelete("{id:int}")]
     public async Task<ActionResult> Delete(
         int id,
@@ -97,6 +101,15 @@ public sealed class ProductsController(
         }
 
         await repository.DeleteAsync(existingProduct.Id, cancellationToken);
+
+        return NoContent();
+    }
+
+    [Authorize(Policy = Permissions.Products.Reset)]
+    [HttpPost("reset")]
+    public async Task<ActionResult> Reset(CancellationToken cancellationToken)
+    {
+        await repository.ResetAsync(cancellationToken);
 
         return NoContent();
     }

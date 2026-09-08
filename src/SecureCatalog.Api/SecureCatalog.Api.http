@@ -22,8 +22,19 @@ Content-Type: application/json
 
 ###
 
+# @name ownerLogin
+POST {{host}}/api/auth/token
+Content-Type: application/json
+
+{
+  "username": "owner",
+  "password": "owner123"
+}
+
+###
+
 POST {{host}}/api/products
-Authorization: Bearer {{writerLogin.response.body.accessToken}}
+Authorization: Bearer {{ownerLogin.response.body.accessToken}}
 Content-Type: application/json
 
 {
@@ -35,18 +46,7 @@ Content-Type: application/json
 ###
 
 POST {{host}}/api/products
-Content-Type: application/json
-Authorization: Bearer {{readerLogin.response.body.accessToken}}
-{
-  "name": "Schreibtisch",
-  "description": "Höhenverstellbar",
-  "price": 499.99
-}
-
-###
-
-POST {{host}}/api/products
-Authorization: Bearer {{readerLogin.response.body.accessToken}}
+Authorization: Bearer {{ownerLogin.response.body.accessToken}}
 Content-Type: application/json
 
 {
@@ -55,15 +55,21 @@ Content-Type: application/json
   "price": 399.99
 }
 
+### 
+
+POST {{host}}/api/products/reset
+Authorization: Bearer {{ownerLogin.response.body.accessToken}}
+
 ###
 
 GET {{host}}/api/products
-Authorization: Bearer {{readerLogin.response.body.accessToken}}
+Authorization: Bearer {{ownerLogin.response.body.accessToken}}
 Accept: application/json
 
 ###
 
-GET {{host}}/api/products/42
+GET {{host}}/api/products/4
+Authorization: Bearer {{ownerLogin.response.body.accessToken}}
 Accept: application/json
 
 ###

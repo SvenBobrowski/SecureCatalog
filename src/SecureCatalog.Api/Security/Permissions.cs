@@ -11,5 +11,6 @@ public static class Permissions
         public const string Read = "products.read";
         public const string Write = "products.write";
         public const string Delete = "products.delete";
+        public const string Reset = "products.reset";
     }
 }

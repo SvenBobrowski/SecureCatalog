@@ -22,4 +22,7 @@ public interface IProductRepository
     Task<bool> DeleteAsync(
         int id,
         CancellationToken cancellationToken = default);
+
+    Task ResetAsync(
+        CancellationToken cancellationToken = default);
 }

@@ -1,3 +1,4 @@
+using Microsoft.AspNetCore.Http.HttpResults;
 using Microsoft.EntityFrameworkCore;
 using SecureCatalog.Api.Data;
 using SecureCatalog.Api.Models;
@@ -74,5 +75,11 @@ public sealed class ProductRepository(
         dbContext.Products.Remove(product);
 
         return await dbContext.SaveChangesAsync(cancellationToken) > 0;
+    }
+
+    public async Task ResetAsync(
+        CancellationToken cancellationToken = default)
+    {
+        await dbContext.Products.ExecuteDeleteAsync();
     }
 }
