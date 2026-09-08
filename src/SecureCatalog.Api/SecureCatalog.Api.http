@@ -1,4 +1,7 @@
-@host = http://localhost:5258
+// Terminal local
+// @host = http://localhost:5258
+// Docker in WSL/Ubuntu
+@host = http://172.18.241.250:8080
 
 # @name writerLogin
 POST {{host}}/api/auth/token
