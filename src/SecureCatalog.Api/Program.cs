@@ -1,73 +1,67 @@
+using System.Text;
+using Microsoft.AspNetCore.Authentication.JwtBearer;
+using Microsoft.EntityFrameworkCore;
+using Microsoft.IdentityModel.Tokens;
 using SecureCatalog.Api.Data;
 using SecureCatalog.Api.Repositories;
-using Microsoft.EntityFrameworkCore;
 using SecureCatalog.Api.Security;
-using Microsoft.AspNetCore.Authentication.JwtBearer;
-using Microsoft.IdentityModel.Tokens;
-using System.Text;
 
 var builder = WebApplication.CreateBuilder(args);
 
 // Add services to the container.
 
 builder.Services.AddControllers();
+
 // Learn more about configuring OpenAPI at https://aka.ms/aspnet/openapi
 builder.Services.AddOpenApi();
 
 // db connection
-var connectionString = builder.Configuration.GetConnectionString("CatalogDatabase") ?? throw new InvalidOperationException("Connection string 'CatalogDatabase' not found.");
+var connectionString =
+    builder.Configuration.GetConnectionString("CatalogDatabase")
+    ?? throw new InvalidOperationException("Connection string 'CatalogDatabase' not found.");
 
-builder.Services.AddDbContext<CatalogDbContext>(options =>
-    options.UseSqlite(connectionString));
+builder.Services.AddDbContext<CatalogDbContext>(options => options.UseSqlite(connectionString));
 
 // Add repository
-builder.Services.AddScoped<IProductRepository, ProductRepository>();    
+builder.Services.AddScoped<IProductRepository, ProductRepository>();
 
 // Permissions and Policy
 builder.Services.AddAuthorization(options =>
 {
     options.AddPolicy(
         Permissions.Products.Read,
-        policy => policy.RequireClaim(
-            Permissions.ClaimType,
-            Permissions.Products.Read));
-    
+        policy => policy.RequireClaim(Permissions.ClaimType, Permissions.Products.Read)
+    );
+
     options.AddPolicy(
         Permissions.Products.Write,
-        policy => policy.RequireClaim(
-            Permissions.ClaimType, 
-            Permissions.Products.Write));
+        policy => policy.RequireClaim(Permissions.ClaimType, Permissions.Products.Write)
+    );
 
     options.AddPolicy(
         Permissions.Products.Delete,
-        policy => policy.RequireClaim(
-            Permissions.ClaimType, 
-            Permissions.Products.Delete));
+        policy => policy.RequireClaim(Permissions.ClaimType, Permissions.Products.Delete)
+    );
 
     options.AddPolicy(
         Permissions.Products.Reset,
-        policy => policy.RequireClaim(
-            Permissions.ClaimType, 
-            Permissions.Products.Reset));
+        policy => policy.RequireClaim(Permissions.ClaimType, Permissions.Products.Reset)
+    );
 });
 
 // Authentification
 
 // the jwt key should never come from an cleartype configuration file
-var jwtKey = builder.Configuration["Jwt:Key"]
-  ?? throw new InvalidOperationException("JWT key is missing");
+var jwtKey =
+    builder.Configuration["Jwt:Key"] ?? throw new InvalidOperationException("JWT key is missing");
 
 // use JWT scheme fpr auth
-builder.Services
-    .AddAuthentication(JwtBearerDefaults.AuthenticationScheme)
+builder
+    .Services.AddAuthentication(JwtBearerDefaults.AuthenticationScheme)
     .AddJwtBearer(options =>
     {
         var issuer = builder.Configuration["Jwt:Issuer"];
         var audience = builder.Configuration["Jwt:Audience"];
-
-        // XXX DEBUG
-        Console.WriteLine($"VALID ISSUER: '{issuer}'");
-        Console.WriteLine($"VALID AUDIENCE: '{audience}'");
 
         options.TokenValidationParameters = new TokenValidationParameters
         {
@@ -79,17 +73,20 @@ builder.Services
             ValidIssuer = issuer,
             ValidAudience = audience,
 
-            IssuerSigningKey = new SymmetricSecurityKey(Encoding.UTF8.GetBytes(jwtKey))
+            IssuerSigningKey = new SymmetricSecurityKey(Encoding.UTF8.GetBytes(jwtKey)),
         };
     });
 
 var app = builder.Build();
 
-// make sure db is exists and migrated on startup
-using (var scope = app.Services.CreateScope())
+if (!app.Environment.IsEnvironment("Testing"))
 {
-    var db = scope.ServiceProvider.GetRequiredService<CatalogDbContext>();
-    await db.Database.MigrateAsync();
+    // make sure db is exists and migrated on startup
+    using (var scope = app.Services.CreateScope())
+    {
+        var db = scope.ServiceProvider.GetRequiredService<CatalogDbContext>();
+        await db.Database.MigrateAsync();
+    }
 }
 
 // Configure the HTTP request pipeline.

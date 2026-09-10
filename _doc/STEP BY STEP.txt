@@ -343,3 +343,102 @@ Jetzt integrieren wir das mal im Controller.
 using Microsoft.AspNetCore.Authorization;
 using SecureCatalog.Api.Security;
 
+Mit Hilfe von Attributen wie
+[Authorize(Policy = Permissions.Products.Read)]
+können wir nun explizit steuern, welche Methode welche Policy benötigt, .NET kümmert sich um den Rest.
+
+12. DOCKER
+
+Früher hätte man die WebApp nun auf einen Windows Server gepackt, als Service eingerichtet, hätte sich um .NET Laufzeitumgebungen usw. kümmern müssen.
+
+Meine Practice heute:
+
+- Dockerfile erstellen (ich bin auch kein Profi, aber Google hilft)
+- Windows 11: WSL2 installieren (Linux Subsystem für Windows), Ubuntu als Distri
+- Windows Docker App installieren, für WSL2 einrichten (siehe Google)
+- Code unter Linux auschecken oder via GitHUB laden (unter WSL findet man das C Laufwerk immer unter /mnt/c).
+- docker in der bash direkt bauen lassen
+- docker Container dann direkt laufen lassen zum Testen der API
+
+Kommandos als Vorlagen habe ich in der README.md eingepflegt.
+
+Kleiner Tipp: manchmal gibt es Problem mit dem Proxy WSL und Windows, wenn der Service aus der http Datei unter localhost angesprochen werden soll.
+Hier hilft es, die konkrete IP des WSL2 Linux zu verwenden (hostname -I).
+
+13. Tests
+
+Für unseren Fall macht es durchaus Sinn, den Controller zu prüfen, ob die Methoden sich so verhalten wie zu erwarten.
+
+Wir nutzen dazu ein klassisches xunit Testprojekt, was wir aber gleich mal mit 2 Paketen erweitern.
+
+dotnet new xunit -n SecureCatalog.Api.Tests
+dotnet package add moq
+dotnet package add Microsoft.AspNetCore.Mvc.Testing
+
+moq hilft uns das Product Repository zu simulieren, ohne auf die echte Datenbank zugreifen zu müssen. 
+Wir erstellen ein Repository auf Basis unseres Interfaces und sagen gleichzeitig, welche Methode welche Parameter erhält und was zurückgegeben werden soll.
+Hier mal direkt als Beispiel:
+
+        var repository = new Mock<IProductRepository>();
+        
+        repository
+            .Setup(r => r.GetByIdAsync(42, It.IsAny<CancellationToken>()))
+            .ReturnsAsync((Product?)null);
+
+Am Ende erzeugt man den Controller mit dem repository.Object und kann dann testen, ob die Methoden das liefern, was sie sollen.
+
+Das 2. Paket, mvc.Testing im AspNet.Core Umfeld kann uns helfen, easy alle Service API Methoden zu testen.
+
+Das Grundgerüst ist sehr simpel:
+
+using System.Net;
+using Microsoft.AspNetCore.Mvc.Testing;
+
+namespace SecureCatalog.Api.Tests.Integration;
+
+public class AuthorizationTests : IClassFixture<WebApplicationFactory<Program>>
+{
+    private readonly HttpClient _client;
+
+    public AuthorizationTests(WebApplicationFactory<Program> factory)
+    {
+        _client = factory.CreateClient();
+    }
+}
+
+IClassFixture<WebApplicationFactory<Program>> hilft uns, einfach den gesamten WebService zu erzeugen und zu verwenden.
+
+Ab jetzt können wir ganz einfach wieder mit [Fact] Tests hinzufügen.
+
+ABER, unser Problem ist, das der WebService ja auf einer DB beruht, die beim Deploy nicht existiert, also müssen wir ein Inmemory DB erzeugnen und nutzen.
+
+Dazu brauchen wir auch SQLite im Test Projekt:
+
+dotnet package add Microsoft.EntityFrameworkCore.Sqlite
+
+Dann können wir eine eigene Factory schreiben, die die DB inmemory erzeugt.
+
+Leider kollidiert so ein Test mit dem Production WebService, weil wir eine Migration laufen lassen, bevor bzw. wenn die TestApp hochkommt.
+
+Wir sollen also generell prüfen, am besten in der program.cs, ob wir in einem Testszenario sind und entsprechenden Code nur bedingt ausführen.
+
+In unserem Fall konkret (in der WebApi Source, nicht im Test Projekt):
+
+if (!app.Environment.IsEnvironment("Testing"))
+{
+    // make sure db is exists and migrated on startup
+    using (var scope = app.Services.CreateScope())
+    {
+        var db = scope.ServiceProvider.GetRequiredService<CatalogDbContext>();
+        await db.Database.MigrateAsync();
+    }
+}
+
+"Testing" setzen wir unserem Testcase Szenario, so das die die "Life" App nicht gestört wird. Das machen wir in unser eigener Factory, die wir ja schon für den inmemory Part brauchen.
+
+protected override void ConfigureWebHost(IWebHostBuilder builder)
+{
+    builder.UseEnvironment("Testing");
+    ...
+}
+

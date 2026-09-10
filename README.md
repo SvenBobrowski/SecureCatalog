@@ -11,8 +11,8 @@ Small training project for .NET Developers for a ASP.Net Core WebService with:
 * API Controllers (REST)
 * CRUD
 * SOA – Service-Oriented Architecture
-* Docker Container incl. Volumes  <== current milestone
-* Unit Testing
+* Docker Container incl. Volumes
+* Unit Testing  <== current milestone
 * Continuous Delivery (CD)
 
 ### WIP
