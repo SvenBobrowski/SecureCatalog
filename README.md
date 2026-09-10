@@ -1,3 +1,24 @@
+### Informations
+
+Kleines Übungsprojekt für .NET Entwickler für einen ASP.Net Core WebService mit:
+Small training project for .NET Developers for a ASP.Net Core WebService with:
+
+* Authorisation
+* Authentification
+* EF Integration
+* Dependency Injection (DI)
+* API Controllers (REST)
+* CRUD
+* SOA – Service-Oriented Architecture
+* Docker Container incl. Volumes  <== current milestone
+* Unit Testing
+* Continuous Delivery (CD)
+
+### WIP
+
+This project is in progress // Das Projekt ist in Entwicklung.
+Ich bitte um Entschuldigung für das Denglisch, das wird nach und nach sauber aufgeräumt.
+
 ### Database
 
 ## Creation
@@ -30,7 +51,7 @@ dotnet ef migrations list
 
 ## Image bauen und ausführen
 
-# Build mit Dockerfile
+# Build with Dockerfile
 docker build -t securecatalog-api .
 
 # Run with port
