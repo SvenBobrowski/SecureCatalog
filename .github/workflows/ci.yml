@@ -41,7 +41,8 @@ jobs:
         uses: docker/build-push-action@v6
         with:
           context: .
+          file: ./src/SecureCatalog.Api/Dockerfile
           push: true
           tags: |
-            DEIN_DOCKERHUB_NAME/securecatalog-api:latest
-            DEIN_DOCKERHUB_NAME/securecatalog-api:${{ github.sha }}
+            svenbobrowski/securecatalog-api:latest
+            svenbobrowski/securecatalog-api:${{ github.sha }}
