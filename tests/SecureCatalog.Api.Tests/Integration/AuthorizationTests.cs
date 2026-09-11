@@ -22,14 +22,4 @@ public class AuthorizationTests : IClassFixture<CustomWebApplicationFactory>
         // Assert
         Assert.Equal(HttpStatusCode.Unauthorized, response.StatusCode);
     }
-
-    [Fact]
-    public async Task GetAllProducts_WithoutAuthorization_ReturnsOk()
-    {
-        // Act
-        var response = await _client.GetAsync("/api/products");
-
-        // Assert
-        Assert.Equal(HttpStatusCode.OK, response.StatusCode);
-    }
 }

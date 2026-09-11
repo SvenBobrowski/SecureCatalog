@@ -454,6 +454,21 @@ Mit Hilfe von CD kann man neue Versionen nach Freigabe direkt in Test oder gar P
 
 CI kann man als gute Hilfe sehen, das eingechecketer Code, egal wie, nicht schon am Übersetzen oder den Testes scheitert.
 
+Bevor es in die Details geht, hier mal ein grober Ablaufplan:
+
+Was brauchen wir?
+
+- GitHub Zugang und Repository nötig
+- DockerHub Zugang und Repository nötig
+- DockerHub accessToken nötig
+
+Was machen wir?
+
+- GitHub Action Build erstellen
+- GitHub Action Test durchführen
+- GitHub Action Bestandener Test Container erstellen
+- GitHub Action Container nach DockerHub pushen
+
 ** CI
 
 CI gibt es auf vielen Plattformen, hier zeigen wir anhand von GitHub Actions, wie einfach das zu erstellen und zu integrieren ist.
@@ -472,4 +487,28 @@ Das Prinzip ist aber einfach, man sagt bei (on) z.b. "git push" sollen die folge
 * Project testen
 
 Da unser Projekt .NET10 Core ist, wählen wir als Umgebung ein Linux.
+
+** CD
+
+Wir nutzen hier DockerHub zum Testen. 
+So können wir unter Windows unseren WebService weiterentwicklen und dann via CI/CD Pipeline mit GitHub/DockerHub unseren Container erstellen und direkt mit Docker Desktop verwenden.
+Ein schöner Workflow, den man komplett nutzen kann. In Produktumgebungen kann man Docker Images dann natürlich auch in firmeneigene Dockerumgebungen laden.
+
+Wir brauchen auf jeden Fall dafür ein DockerHub Account, Namen (nicht Email!) und Passwort merken.
+
+WICHTIG: wir müssen via DockerHub noch ein Repo anlegen, z.B. "securecatalog-api"
+Dann haben wir ein offizielles Repo der Art "svenbobrowski/securecatalog-api".
+Nicht vergessen und merken, wir brauchen ein AccessToken für die gesamte Pipeline.
+Profilbild oben rechts → Account settings → Personal access tokens → Generate new token.
+Diese Tokens sind für unseren Account, nicht für die einzelnen Repos hier!
+
+Im GitHub tragen wir für unser Projekt die Credentials ein, damit wir diese nie irgendwo im Klartext angeben müssen.
+Repository → Settings → Secrets and variables → Actions
+dort dann z.B. DOCKER_USERNAME und DOCKER_TOKEN
+
+Am Ende erweiteren wir unser Yaml File mit den Actions für Docker Hub Login und Docker Datei bauen und pushen.
+
+
+
+
 
