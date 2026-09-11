@@ -442,3 +442,34 @@ protected override void ConfigureWebHost(IWebHostBuilder builder)
     ...
 }
 
+14. CI/CD
+
+Okay, erstmal die Begriffe kurz abchecken
+CI steht für Continuous Integration
+CD steht für Continuous Delivery, manchmal auch Continuous Deployment
+
+Mit Hilfe von CI kann man neue Commits direkt prüfen lassen, ob sie sich korrekt erstellen lassen und ob die eingebauten Tests erfolgreich sind.
+
+Mit Hilfe von CD kann man neue Versionen nach Freigabe direkt in Test oder gar Produktivsysteme ausliefern.
+
+CI kann man als gute Hilfe sehen, das eingechecketer Code, egal wie, nicht schon am Übersetzen oder den Testes scheitert.
+
+** CI
+
+CI gibt es auf vielen Plattformen, hier zeigen wir anhand von GitHub Actions, wie einfach das zu erstellen und zu integrieren ist.
+
+Wir brauchen auf jeden Fall eine solche Struktur im Verzeichnis unserer Lösung:
+
+.github
+└── workflows
+    └── ci.yml
+
+Die Syntax der yml ist nichts, was man auswendig lernen kann. Aber einmal erstellt, z.B. mit Vorlagen oder Google oder KI, kann man sie immer wieder als Vorlage nutzen.
+Das Prinzip ist aber einfach, man sagt bei (on) z.b. "git push" sollen die folgenden Aktionen (jobs) ausgeführt werden. Solch ein Job besteht in der Regel aus:
+* Repo auschecken
+* .NET SDK bereitstellen
+* Project restoren und bauen
+* Project testen
+
+Da unser Projekt .NET10 Core ist, wählen wir als Umgebung ein Linux.
+
