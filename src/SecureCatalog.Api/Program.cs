@@ -1,16 +1,20 @@
 using System.Text;
+using Microsoft.AspNetCore.Identity;
 using Microsoft.AspNetCore.Authentication.JwtBearer;
 using Microsoft.EntityFrameworkCore;
 using Microsoft.IdentityModel.Tokens;
 using SecureCatalog.Api.Data;
 using SecureCatalog.Api.Repositories;
 using SecureCatalog.Api.Security;
+using SecureCatalog.Api.Data.Entities;
 
 var builder = WebApplication.CreateBuilder(args);
 
 // Add services to the container.
 
 builder.Services.AddControllers();
+
+builder.Services.AddScoped<IPasswordHasher<User>, PasswordHasher<User>>();
 
 // Learn more about configuring OpenAPI at https://aka.ms/aspnet/openapi
 builder.Services.AddOpenApi();
@@ -86,6 +90,53 @@ if (!app.Environment.IsEnvironment("Testing"))
     {
         var db = scope.ServiceProvider.GetRequiredService<CatalogDbContext>();
         await db.Database.MigrateAsync();
+
+        var passwordHasher = scope.ServiceProvider
+            .GetRequiredService<IPasswordHasher<User>>();
+
+        if (!await db.Users.AnyAsync())
+        {
+            var editorUser = new User
+            {
+                Username = "editor",
+                PasswordHash = string.Empty,
+                Role = "Editor"
+            };
+
+            editorUser.PasswordHash = passwordHasher.HashPassword(
+                editorUser,
+                "editor123");
+
+            db.Users.Add(editorUser);
+
+            var readerUser = new User
+            {
+                Username = "reader",
+                PasswordHash = string.Empty,
+                Role = "Reader"
+            };
+
+            readerUser.PasswordHash = passwordHasher.HashPassword(
+                readerUser,
+                "reader123");
+
+            db.Users.Add(readerUser);
+
+            var ownerUser = new User
+            {
+                Username = "owner",
+                PasswordHash = string.Empty,
+                Role = "Owner"
+            };
+
+            ownerUser.PasswordHash = passwordHasher.HashPassword(
+                ownerUser,
+                "owner123");
+
+            db.Users.Add(ownerUser);
+
+            await db.SaveChangesAsync();
+        }
     }
 }
 

@@ -1,61 +1,94 @@
+using Microsoft.EntityFrameworkCore;
 using System.IdentityModel.Tokens.Jwt;
 using System.Security.Claims;
 using System.Text;
 using Microsoft.AspNetCore.Mvc;
 using Microsoft.IdentityModel.Tokens;
 using SecureCatalog.Api.Security;
+using SecureCatalog.Api.Data.Entities;
+using Microsoft.AspNetCore.Identity;
+using SecureCatalog.Api.Data;
 
 namespace SecureCatalog.Api.Controllers;
 
 [ApiController]
 [Route("api/[controller]")]
 public sealed class AuthController(
-    IConfiguration configuration)
+    IConfiguration configuration,
+    IPasswordHasher<User> passwordHasher,
+    CatalogDbContext dbContext)
     : ControllerBase
 {
     [HttpPost("token")]
-    public ActionResult<TokenResponse> CreateToken(LoginRequest login) 
+    public async Task<ActionResult<TokenResponse>> CreateToken(
+        LoginRequest login,
+        CancellationToken cancellationToken)
     {
-        // demo only, normally we use ASP.NET Identity
-        if (login.Username == "reader" && login.Password == "reader123")
+        var user = await dbContext.Users
+            .FirstOrDefaultAsync(u => u.Username == login.Username, cancellationToken);
+
+        if (user is null || !user.IsActive)
         {
-            return Ok(CreateJwt(
-                login.Username,
-                new[]
-                {
-                    Permissions.Products.Read
-                }));
-        }
-        if (login.Username == "writer" && login.Password == "writer123")
-        {
-            return Ok(CreateJwt(
-                login.Username,
-                new[]
-                {
-                    Permissions.Products.Read,
-                    Permissions.Products.Write,
-                    Permissions.Products.Delete
-                }));
-        }
-        if (login.Username == "owner" && login.Password == "owner123")
-        {
-            return Ok(CreateJwt(
-                login.Username,
-                new[]
-                {
-                    Permissions.Products.Read,
-                    Permissions.Products.Write,
-                    Permissions.Products.Delete,
-                    Permissions.Products.Reset
-                }));
+            return Unauthorized();
         }
 
-        return Unauthorized();
+        var verificationResult = passwordHasher.VerifyHashedPassword(
+            user,
+            user.PasswordHash,
+            login.Password);
+
+        if (verificationResult == PasswordVerificationResult.Failed)
+        {
+            return Unauthorized();
+        }
+
+        if (verificationResult == PasswordVerificationResult.SuccessRehashNeeded)
+        {
+            user.PasswordHash = passwordHasher.HashPassword(
+                user,
+                login.Password);
+
+            await dbContext.SaveChangesAsync(cancellationToken);
+        }
+
+        IEnumerable<string>? permissions = user.Role switch
+        {
+            "Reader" =>
+            [
+                Permissions.Products.Read
+            ],
+
+            "Editor" =>
+            [
+                Permissions.Products.Read,
+                Permissions.Products.Write,
+                Permissions.Products.Delete
+            ],
+
+            "Owner" =>
+            [
+                Permissions.Products.Read,
+                Permissions.Products.Write,
+                Permissions.Products.Delete,
+                Permissions.Products.Reset
+            ],
+
+            _ => null
+        };
+
+        if (permissions is null)
+        {
+            return Unauthorized();
+        }
+
+        return Ok(CreateJwt(
+            user.Username,
+            permissions));
     }
 
-   private TokenResponse CreateJwt(
-        string username,
-        IEnumerable<string> permissions)
+    private TokenResponse CreateJwt(
+         string username,
+         IEnumerable<string> permissions)
     {
         var key = configuration["Jwt:Key"]
             ?? throw new InvalidOperationException("JWT key is missing.");
