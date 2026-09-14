@@ -4,10 +4,12 @@ on:
   push:
     branches:
       - main
+      - auth-db
 
   pull_request:
     branches:
       - main
+      - auth-db
 
 jobs:
   build-and-test:
