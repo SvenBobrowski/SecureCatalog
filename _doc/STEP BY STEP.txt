@@ -522,7 +522,76 @@ main
  ├── auth-netcore   ← ASP.NET Core Identity
  └── auth-external  ← später Keycloak o.ä.
 
+16. auth-db
 
+Manchmal reicht es vollkommen aus, eine kleine, lokale UserDB für die Authorisierung zu verwenden. 
+Wir speichern hier Nutzer inkl. der Passwörter (natürlich nur Hashes) sowie weitere nützliche Verweise wie z.B. Rollen (unsere Authentication) usw.
 
+Ein Minimum Model ist dabei
+user
+ ├── id
+ ├── username
+ ├── passwordhash
+ └── role
 
+Wichtig ist, das wir dafür sorgen, das Nutzernamen eineindeutig bleiben. Wir könnne das im Model nicht selbst definieren, also nutzen wir im Endeffekt den DBContext.
+
+protected override void OnModelCreating(ModelBuilder modelBuilder)
+{
+    base.OnModelCreating(modelBuilder);
+
+    modelBuilder.Entity<User>()
+        .HasIndex(user => user.Username)
+        .IsUnique();
+}
+
+Am Ende lassen wir dann wieder eine EF Migration durchführen, sprich neuen Tag anlegen und ausführen lassen.
+
+dotnet tool restore (falls nötig)
+dotnet ef migrations add AddUsers
+dotnet ef database update (Optional, da durch den Start eh automatisiert)
+
+Falls Ihr das alles im root macht, --project .\src\SecureCatalog.Api\ nicht vergessen!
+
+Passwort Hasher + Salt
+program.cs
+...
+builder.Services.AddScoped<IPasswordHasher<User>, PasswordHasher<User>>();
+
+program.cs, neue User zum Testen!
+var passwordHasher = scope.ServiceProvider
+        .GetRequiredService<IPasswordHasher<User>>();
+
+    if (!await db.Users.AnyAsync())
+    {
+        var user = new User
+        {
+            Username = "editor",
+            PasswordHash = string.Empty,
+            Role = "Editor"
+        };
+
+        user.PasswordHash = passwordHasher.HashPassword(
+            user,
+            "editor123");
+
+        db.Users.Add(user);
+        await db.SaveChangesAsync();
+    }
+
+Der in .Net Core eingebaute PasswordHasher hat viele Vorteile, weil er in den Hash String Folgendes integriert:
+- Version
+- Algorithmus-Parameter
+- Salt
+- Hash
+
+Für Passwörter verwendet man übrigens auch bevorzugt langsame Algorithmen:
+SHA256(password)             ❌
+SHA256(password + salt)      besser, aber trotzdem nicht ideal
+PBKDF2 / bcrypt / Argon2
++ Salt
++ Work Factor / Iterations   ✅
+
+Dadurch sind die Hashes wirklich Random, man kann sie nicht mit Vergleichstest gegen Passwort Datenbanken ermitteln und auch gleiche Passwörter erhalten unterschiedliche Hashes durch den Salt.
+Der Salt Wert ist random und wird mit gespeichert im Hash, so das für einen Vergleich der Hash wieder verwendet werden kann.
 
