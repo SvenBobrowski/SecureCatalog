@@ -508,6 +508,20 @@ dort dann z.B. DOCKER_USERNAME und DOCKER_TOKEN
 
 Am Ende erweiteren wir unser Yaml File mit den Actions für Docker Hub Login und Docker Datei bauen und pushen.
 
+15. Authentication/Authorization Branches
+
+In Zukunft gibt es verschiedene Branches, weil ich die Authentication/Authorization nun mit praxisnahen Methoden einbauen möchte.
+
+Parallel dazu wird ein Tag "auth-baseline" auf dem aktuellen main Branch erstellt, nur zur Sicherheit.
+
+git tag auth-baseline
+git push origin auth-baseline
+
+main
+ ├── auth-db        ← eigener User-/Role-/RefreshToken-Stack
+ ├── auth-netcore   ← ASP.NET Core Identity
+ └── auth-external  ← später Keycloak o.ä.
+
 
 
 
